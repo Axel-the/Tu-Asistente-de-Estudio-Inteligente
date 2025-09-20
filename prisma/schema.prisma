@@ -1,0 +1,180 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  studyPlans      StudyPlan[]
+  studySessions   StudySession[]
+  summaries       Summary[]
+  tutoringSessions TutoringSession[]
+  progressRecords ProgressRecord[]
+
+  @@map("users")
+}
+
+model StudyPlan {
+  id          String   @id @default(cuid())
+  title       String
+  subject     String
+  level       String   // Principiante, Intermedio, Avanzado
+  duration    Int      // Duration in weeks
+  hoursPerWeek Int
+  objectives  String?
+  learningStyle String? // JSON string array: Visual, Auditivo, Kinestésico, Lectura
+  status      String   @default("active") // active, paused, completed
+  progress    Float    @default(0) // Progress percentage
+  generatedContent String? // AI-generated plan content
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  // Relations
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studySessions StudySession[]
+  weeklyPlans  WeeklyPlan[]
+
+  @@map("study_plans")
+}
+
+model WeeklyPlan {
+  id          String @id @default(cuid())
+  weekNumber  Int
+  title       String
+  objectives  String
+  topics      String? // JSON string array
+  activities  String? // JSON string array
+  resources   String? // JSON string array
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  studyPlanId String
+
+  // Relations
+  studyPlan StudyPlan @relation(fields: [studyPlanId], references: [id], onDelete: Cascade)
+
+  @@map("weekly_plans")
+}
+
+model StudySession {
+  id          String   @id @default(cuid())
+  title       String
+  duration    Int      // Duration in minutes
+  notes       String?
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  studyPlanId String?
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyPlan StudyPlan? @relation(fields: [studyPlanId], references: [id])
+
+  @@map("study_sessions")
+}
+
+model Summary {
+  id           String   @id @default(cuid())
+  title        String
+  originalText String
+  summaryText  String
+  keyPoints    String? // JSON string array
+  studyQuestions String? // JSON string array
+  style        String   // Puntos Clave, Párrafo Resumen, Esquema, Preguntas y Respuestas
+  length       String   // Corto, Medio, Largo, Personalizado
+  sourceType   String   // text, file, url
+  sourceUrl    String?
+  fileName     String?
+  reduction    Float    // Percentage reduction from original
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  userId       String
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("summaries")
+}
+
+model TutoringSession {
+  id        String   @id @default(cuid())
+  subject   String
+  level     String   // Principiante, Intermedio, Avanzado
+  mode      String   // Explicación, Resolución de Problemas, Práctica Guiada
+  duration  Int      // Session duration in minutes
+  status    String   @default("active") // active, completed, cancelled
+  topicsCovered String? // JSON string array
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+
+  // Relations
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages   TutoringMessage[]
+
+  @@map("tutoring_sessions")
+}
+
+model TutoringMessage {
+  id        String   @id @default(cuid())
+  content   String
+  role      String   // user, assistant
+  timestamp DateTime @default(now())
+  sessionId String
+
+  // Relations
+  session TutoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("tutoring_messages")
+}
+
+model ProgressRecord {
+  id          String   @id @default(cuid())
+  subject     String
+  level       String
+  totalHours  Float    @default(0)
+  completedSessions Int @default(0)
+  masteryLevel Float   @default(0) // 0-100
+  lastStudied DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("progress_records")
+}
+
+model LearningResource {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String   // video, article, exercise, book, etc.
+  url         String?
+  subject     String
+  level       String
+  tags        String? // JSON string array
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("learning_resources")
+}
